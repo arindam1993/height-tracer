@@ -1,0 +1,12 @@
+{
+  "name": "height-tracer",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "global": "^4.4.0",
+    "parcel": "^1.12.4",
+    "prettier": "^2.0.5",
+    "three": "^0.118.3"
+  }
+}
