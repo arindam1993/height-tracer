@@ -5,15 +5,21 @@ import {
   Mesh,
   BufferGeometry,
   BufferAttribute,
-  MeshLambertMaterial,
+  ShaderMaterial,
   TextureLoader,
   FrontSide,
   AmbientLight,
-  DirectionalLight
+  DirectionalLight,
+  ShaderLib,
+  UniformsUtils,
+  UniformsLib
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import { getPixels, decodeDEM } from "./utils";
+import { getPixels, decodeDEM, maxHeight } from "./utils";
 import Martini from "@mapbox/martini";
+import pomVert from "./shaders/pom.vertex.glsl";
+import pomFrag from "./shaders/pom.fragment.glsl";
+
 const scene = new Scene();
 const camera = new PerspectiveCamera(
   90,
@@ -37,10 +43,11 @@ camera.position.set(
 camera.lookAt(0, 0, 0);
 
 new TextureLoader().load(
-  "https://api.mapbox.com/v4/mapbox.terrain-rgb/10/734/421.png?access_token=pk.eyJ1IjoiYXJpbmRhbTE5OTMiLCJhIjoiY2p0bnU2dmtoMHp4ZTN5cGxmZXJpa3BpdiJ9._9GLi1K1ERIMzwpzWSL-PA",
+  "https://api.mapbox.com/v4/mapbox.terrain-rgb/10/906/404.png?access_token=pk.eyJ1IjoiYXJpbmRhbTE5OTMiLCJhIjoiY2p0bnU2dmtoMHp4ZTN5cGxmZXJpa3BpdiJ9._9GLi1K1ERIMzwpzWSL-PA",
   texture => {
     const pixels = getPixels(texture);
     const decodedDem = decodeDEM(pixels);
+    const max = maxHeight(pixels);
     const martini = new Martini(257);
     // generate RTIN hierarchy from terrain data (an array of size^2 length)
     const tile = martini.createTile(decodedDem);
@@ -78,14 +85,23 @@ new TextureLoader().load(
     geometry.computeBoundingBox();
     geometry.computeVertexNormals();
 
-    const material = new MeshLambertMaterial({ map: texture, side: FrontSide });
+    let uniforms = UniformsUtils.clone(ShaderLib.standard.uniforms);
+    uniforms["heightmap"] = { value: texture };
+    uniforms["maxHeight"] = { value: max * terrainScale };
+
+    const material = new ShaderMaterial({
+      uniforms,
+      lights: true,
+      vertexShader: pomVert,
+      fragmentShader: pomFrag
+    });
     const mesh = new Mesh(geometry, material);
     scene.add(mesh);
 
     // Add lights
     const ambient = new AmbientLight(0x404040); // soft white
     scene.add(ambient);
-    const directional = new DirectionalLight(0x404040, 1);
+    const directional = new DirectionalLight(0x404040, 3);
     directional.position.set(1, 1, 1);
     scene.add(directional);
 

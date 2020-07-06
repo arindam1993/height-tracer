@@ -12,9 +12,9 @@ uniform sampler2D heightmap;
 
 uniform float maxHeight;
 
-vec2 intersectTile(vec3 origin, vec3 dir, float height) {
-  vec3 p = vec3(0, 0, height);
-  vec3 n = vec3(0, 0, 1);
+vec2 rayPlaneIntersect(vec3 origin, vec3 dir, vec3 P, vec3 N, float height) {
+  vec3 p = vec3(P.x, P.y, height);
+  vec3 n = N;
   float l = dot(dir, n);
   float t = dot(p - origin, n)/l;
   
@@ -26,9 +26,9 @@ float getHeight(vec2 pt) {
   return  -10000.0 + (pt.x * 255.0 * 256.0 * 256.0 + pt.y * 255.0 * 256.0 + pt.z * 255.0) * 0.1;
 }
 
-float getInterpolatedHeight(vec2 upper, vec2 lower) {
-  float u = getHeight(upper);
-  float l = getHeight(lower);
+float raymarch(vec3 origin, vec3 dir) {
+  
+
 }
 
 void main(void) {
