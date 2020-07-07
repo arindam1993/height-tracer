@@ -1,5 +1,6 @@
 #define STANDARD
 #define USE_UV
+#define USE_MAP
 varying vec3 vViewPosition;
 varying vec3 vWorldPosition;
 
