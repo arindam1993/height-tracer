@@ -12,7 +12,8 @@ import {
   DirectionalLight,
   ShaderLib,
   UniformsUtils,
-  UniformsLib
+  UniformsLib,
+  NearestFilter
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { getPixels, decodeDEM, maxHeight } from "./utils";
@@ -35,6 +36,7 @@ document.body.appendChild(canvas);
 
 const metersPerPixel = 124.73948277849482;
 const terrainScale = 0.01;
+const terrainExaggeration = 2;
 camera.position.set(
   metersPerPixel * terrainScale,
   metersPerPixel * terrainScale,
@@ -47,7 +49,7 @@ new TextureLoader().load(
   texture => {
     const pixels = getPixels(texture);
     const decodedDem = decodeDEM(pixels);
-    const max = maxHeight(pixels);
+    const max = Math.max(...decodedDem);
     const martini = new Martini(257);
     // generate RTIN hierarchy from terrain data (an array of size^2 length)
     const tile = martini.createTile(decodedDem);
@@ -66,7 +68,7 @@ new TextureLoader().load(
 
       vertices[3 * i] = x * metersPerPixel * terrainScale;
       vertices[3 * i + 1] = y * metersPerPixel * terrainScale;
-      vertices[3 * i + 2] = z * terrainScale;
+      vertices[3 * i + 2] = max * terrainScale;
 
       uv[2 * i] = x / 257;
       uv[2 * i + 1] = 1 - y / 257;
@@ -88,6 +90,9 @@ new TextureLoader().load(
     let uniforms = UniformsUtils.clone(ShaderLib.standard.uniforms);
     uniforms["heightmap"] = { value: texture };
     uniforms["maxHeight"] = { value: max * terrainScale };
+    uniforms["terrainScale"] = { value: terrainScale };
+    // uniforms["exaggeration"] = { value: terrainExaggeration };
+    // console.log(max * terrainScale * terrainExaggeration);
 
     const material = new ShaderMaterial({
       uniforms,
