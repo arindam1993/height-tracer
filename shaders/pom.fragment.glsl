@@ -2,7 +2,7 @@ precision highp float;
 #define STANDARD
 #define USE_UV
 #define USE_MAP
-#define MARCH_STEPS 50
+#define MARCH_STEPS 30
 #define TERRAIN_SCALE vec2(513.0 * 1.24739482778494, 513.0 * 1.24739482778494)
 
 #ifdef PHYSICAL
@@ -17,6 +17,9 @@ uniform float metalness;
 uniform float opacity;
 
 varying vec3 vWorldPosition;
+varying vec3 vPlaneWorldPosition;
+varying vec3 vPlaneNormal;
+uniform vec3 cPos;
 uniform float maxHeight;
 uniform float terrainScale;
 uniform float exaggeration;
@@ -71,9 +74,8 @@ varying vec3 vViewPosition;
 
 vec3 rayPlaneIntersect(vec3 origin, vec3 dir, vec3 P, vec3 N, float height) {
   vec3 p = P + height * N;
-  vec3 n = N;
-  float l = dot(dir, n);
-  float t = dot(p - origin, n)/l;
+  float l = dot(dir, N);
+  float t = dot(p - origin, N)/l;
   
   vec3 pt = origin + dir*t;
   return pt;
@@ -133,18 +135,18 @@ vec3 interpolateBetweenMarches(vec3 prevSample, float prevHeight, vec3 currSampl
 
 bool raymarch(sampler2D heightmap, vec3 origin, vec3 dir, vec3 worldPos, vec3 normal, out vec3 refinedWorldPos) {
   vec3 currWsPoint;
-  float currHeight = raytrace(heightmap, origin, dir, worldPos, normal, 10.0, currWsPoint);
+  float currHeight = raytrace(heightmap, origin, dir, worldPos, normal, 0.0, currWsPoint);
 
   vec3 prevWsPoint = vec3(currWsPoint);
   float prevHeight = currHeight;
   
   bool found = false;
   for( int i = 1; i < MARCH_STEPS; i++){
-    float heightOffset = mix(10.0, -25.0, float(i)/float(MARCH_STEPS));
+    float heightOffset = -20.0 * float(i)/float(MARCH_STEPS);
     currHeight = raytrace(heightmap, origin, dir, worldPos, normal, heightOffset, currWsPoint);
 
     //Ray has marched below terrain, we have found the hitpoint
-    if(currHeight > currWsPoint.z) {
+    if(currHeight >= currWsPoint.z) {
       refinedWorldPos = interpolateBetweenMarches(prevWsPoint, prevHeight, currWsPoint, currHeight, normal, dir);
       found = true;
       break;
@@ -153,16 +155,13 @@ bool raymarch(sampler2D heightmap, vec3 origin, vec3 dir, vec3 worldPos, vec3 no
       prevWsPoint = vec3(currWsPoint);
     }
   }
-  refinedWorldPos = vec3(currWsPoint.xy, currHeight);
-  return found;
+  refinedWorldPos = currWsPoint;
+  return true;
 }
 
 
 void main() {
-  vec3 rayDir = normalize(vWorldPosition - cameraPosition);
-  vec3 fdx = vec3( dFdx( vViewPosition.x ), dFdx( vViewPosition.y ), dFdx( vViewPosition.z ) );
-	vec3 fdy = vec3( dFdy( vViewPosition.x ), dFdy( vViewPosition.y ), dFdy( vViewPosition.z ) );
-	vec3 flatNormal = normalize( cross( fdx, fdy ) );
+  vec3 rayDir = normalize(vWorldPosition - cPos);
 #if 0 > 0
 	vec4 plane;
 	
@@ -173,9 +172,9 @@ void main() {
 	#endif
 #endif
   vec3 refinedWorldPos;
-  bool rayHit = raymarch(heightmap, cameraPosition, rayDir, vWorldPosition, flatNormal, refinedWorldPos);
+  bool rayHit = raymarch(heightmap, cPos, rayDir, vPlaneWorldPosition, vPlaneNormal, refinedWorldPos);
   vec2 refinedUv = wsToUv(refinedWorldPos);
-  if(refinedUv.x < 0.0 || refinedUv.x > 1.0 || refinedUv.y < 0.0 || refinedUv.y > 1.0 ){
+  if(!rayHit || refinedUv.x < 0.0 || refinedUv.x > 1.0 || refinedUv.y < 0.0 || refinedUv.y > 1.0 ){
     discard;
   }
 	vec4 diffuseColor = vec4( diffuse, opacity );

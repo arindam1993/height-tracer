@@ -79,34 +79,99 @@ Promise.all([demPromise, rasterPromise]).then(([texture, rasterTexture]) => {
 
   // get a mesh (vertices and triangles indices) for a 50m error
   const martiniMesh = tile.getMesh(200);
-  const numVertices = martiniMesh.vertices.length / 2;
+  // const numVertices = martiniMesh.vertices.length / 2;
   const numTriangles = martiniMesh.triangles.length / 3;
-  const vertices = new Float32Array(numVertices * 3);
-  const uv = new Float32Array(numVertices * 2);
   // build up vertex and uv buffer
-  for (let i = 0; i < numVertices; i++) {
-    const x = martiniMesh.vertices[2 * i];
-    const y = martiniMesh.vertices[2 * i + 1];
-    const z = decodedDem[y * 513 + x];
+  // for (let i = 0; i < numVertices; i++) {
+  //   const x = martiniMesh.vertices[2 * i];
+  //   const y = martiniMesh.vertices[2 * i + 1];
+  //   const z = decodedDem[y * 513 + x];
 
-    vertices[3 * i] = x * metersPerPixel * terrainScale;
-    vertices[3 * i + 1] = y * metersPerPixel * terrainScale;
-    vertices[3 * i + 2] = z * terrainScale * terrainExaggeration + 10;
+  //   vertices[3 * i] = x * metersPerPixel * terrainScale;
+  //   vertices[3 * i + 1] = y * metersPerPixel * terrainScale;
+  //   vertices[3 * i + 2] = z * terrainScale * terrainExaggeration + 10;
 
-    uv[2 * i] = x / 513;
-    uv[2 * i + 1] = 1 - y / 513;
-  }
-  // switch triangles to be winding order consisten with threejs expectation
+  //   uv[2 * i] = x / 513;
+  //   uv[2 * i + 1] = 1 - y / 513;
+  // }
+
+  //duplicate vertices so that we can have flat triangles
+  const vertices = new Float32Array(numTriangles * 3 * 3);
+  const planeVertices = new Float32Array(numTriangles * 3 * 3);
+  const indices = new Uint16Array(numTriangles * 3);
+
+  let vertCtr = 0;
+  const pushTriangle = i => {
+    // debugger;
+    const v1 = martiniMesh.triangles[3 * i];
+    const v2 = martiniMesh.triangles[3 * i + 1];
+    const v3 = martiniMesh.triangles[3 * i + 2];
+
+    const v1x = martiniMesh.vertices[2 * v1];
+    const v1y = martiniMesh.vertices[2 * v1 + 1];
+    const v1z = decodedDem[v1y * 513 + v1x];
+
+    const v2x = martiniMesh.vertices[2 * v2];
+    const v2y = martiniMesh.vertices[2 * v2 + 1];
+    const v2z = decodedDem[v2y * 513 + v2x];
+
+    const v3x = martiniMesh.vertices[2 * v3];
+    const v3y = martiniMesh.vertices[2 * v3 + 1];
+    const v3z = decodedDem[v3y * 513 + v3x];
+
+    const v1xf = v1x * metersPerPixel * terrainScale;
+    const v1yf = v1y * metersPerPixel * terrainScale;
+    const v1zf = v1z * terrainScale * terrainExaggeration + 10;
+
+    const v2xf = v2x * metersPerPixel * terrainScale;
+    const v2yf = v2y * metersPerPixel * terrainScale;
+    const v2zf = v2z * terrainScale * terrainExaggeration + 10;
+
+    const v3xf = v3x * metersPerPixel * terrainScale;
+    const v3yf = v3y * metersPerPixel * terrainScale;
+    const v3zf = v3z * terrainScale * terrainExaggeration + 10;
+
+    const cxf = (v1xf + v2xf + v3xf) / 3;
+    const cyf = (v1yf + v2yf + v3yf) / 3;
+    const czf = (v1zf + v2zf + v3zf) / 3;
+
+    // Add each vertex
+    vertices[3 * vertCtr] = v1xf;
+    vertices[3 * vertCtr + 1] = v1yf;
+    vertices[3 * vertCtr + 2] = v1zf;
+    planeVertices[3 * vertCtr] = cxf;
+    planeVertices[3 * vertCtr + 1] = cyf;
+    planeVertices[3 * vertCtr + 2] = czf;
+    indices[3 * i] = vertCtr;
+    vertCtr++;
+
+    vertices[3 * vertCtr] = v3xf;
+    vertices[3 * vertCtr + 1] = v3yf;
+    vertices[3 * vertCtr + 2] = v3zf;
+    planeVertices[3 * vertCtr] = cxf;
+    planeVertices[3 * vertCtr + 1] = cyf;
+    planeVertices[3 * vertCtr + 2] = czf;
+    indices[3 * i + 1] = vertCtr;
+    vertCtr++;
+
+    vertices[3 * vertCtr] = v2xf;
+    vertices[3 * vertCtr + 1] = v2yf;
+    vertices[3 * vertCtr + 2] = v2zf;
+    planeVertices[3 * vertCtr] = cxf;
+    planeVertices[3 * vertCtr + 1] = cyf;
+    planeVertices[3 * vertCtr + 2] = czf;
+    indices[3 * i + 2] = vertCtr;
+    vertCtr++;
+  };
+
   for (let i = 0; i < numTriangles; i++) {
-    const temp = martiniMesh.triangles[3 * i + 1];
-    martiniMesh.triangles[3 * i + 1] = martiniMesh.triangles[3 * i + 2];
-    martiniMesh.triangles[3 * i + 2] = temp;
+    pushTriangle(i);
   }
 
   const geometry = new BufferGeometry();
   geometry.setAttribute("position", new BufferAttribute(vertices, 3));
-  geometry.setAttribute("uv", new BufferAttribute(uv, 2));
-  geometry.setIndex(new BufferAttribute(martiniMesh.triangles, 1));
+  geometry.setAttribute("planePosition", new BufferAttribute(planeVertices, 3));
+  geometry.setIndex(new BufferAttribute(indices, 1));
   geometry.computeBoundingBox();
   geometry.computeVertexNormals();
 
@@ -116,7 +181,7 @@ Promise.all([demPromise, rasterPromise]).then(([texture, rasterTexture]) => {
   uniforms["map"] = { value: rasterTexture };
   uniforms["terrainScale"] = { value: terrainScale };
   uniforms["exaggeration"] = { value: terrainExaggeration };
-  // console.log(max * terrainScale * terrainExaggeration);
+  uniforms["cPos"] = { value: camera.getWorldPosition() };
 
   const material = new ShaderMaterial({
     uniforms,
@@ -145,6 +210,9 @@ Promise.all([demPromise, rasterPromise]).then(([texture, rasterTexture]) => {
 
   const onRenderFrame = () => {
     controls.update();
+    camera.updateMatrixWorld();
+    uniforms["cPos"] = { value: camera.getWorldPosition() };
+
     renderer.render(scene, camera);
     window.requestAnimationFrame(onRenderFrame);
   };

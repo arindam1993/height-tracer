@@ -1,8 +1,10 @@
+precision highp float;
 #define STANDARD
-#define USE_UV
-#define USE_MAP
 varying vec3 vViewPosition;
 varying vec3 vWorldPosition;
+attribute vec3 planePosition;
+varying vec3 vPlaneWorldPosition;
+varying vec3 vPlaneNormal;
 
 uniform sampler2D heightmap;
 #ifndef FLAT_SHADED
@@ -81,6 +83,7 @@ transformedNormal = normalMatrix * transformedNormal;
 #endif
 #ifndef FLAT_SHADED // Normal computed with derivatives when FLAT_SHADED
 	vNormal = normalize( transformedNormal );
+  vPlaneNormal = normal;
 	#ifdef USE_TANGENT
 		vTangent = normalize( transformedTangent );
 		vBitangent = normalize( cross( vNormal, vTangent ) * tangent.w );
@@ -138,6 +141,8 @@ gl_Position = projectionMatrix * mvPosition;
 		worldPosition = instanceMatrix * worldPosition;
 	#endif
 	worldPosition = modelMatrix * worldPosition;
+  vec4 planeWorldPosition = modelMatrix * vec4(planePosition, 1.0);
+  vPlaneWorldPosition = planeWorldPosition.xyz / planeWorldPosition.w;
   vWorldPosition = worldPosition.xyz / worldPosition.w;
 #ifdef USE_SHADOWMAP
 	#if 0 > 0 || 0 > 0 || 0 > 0
