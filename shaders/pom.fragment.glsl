@@ -2,10 +2,8 @@ precision highp float;
 #define STANDARD
 #define USE_UV
 #define USE_MAP
-#define MARCH_STEPS 100
+#define MARCH_STEPS 50
 #define TERRAIN_SCALE vec2(513.0 * 1.24739482778494, 513.0 * 1.24739482778494)
-#define MAX_HEIGHT 0.0
-#define MIN_HEIGHT -20.0
 
 #ifdef PHYSICAL
 	#define REFLECTIVITY
@@ -117,8 +115,8 @@ vec2 instersectLines(vec2 p1, vec2 p2, vec2 p3, vec2 p4) {
   );
 }
 
-vec3 interpolateBetweenMarches(vec3 prevSample, float prevHeight, vec3 currSample, float currHeight, vec3 normal) {
-  vec3 rayline = normalize(prevSample - currSample);
+vec3 interpolateBetweenMarches(vec3 prevSample, float prevHeight, vec3 currSample, float currHeight, vec3 normal, vec3 ray) {
+  vec3 rayline = ray;
   vec3 ybasis = normal;
   vec3 xbasis = normalize(rayline - ybasis);
 
@@ -135,7 +133,7 @@ vec3 interpolateBetweenMarches(vec3 prevSample, float prevHeight, vec3 currSampl
 
 bool raymarch(sampler2D heightmap, vec3 origin, vec3 dir, vec3 worldPos, vec3 normal, out vec3 refinedWorldPos) {
   vec3 currWsPoint;
-  float currHeight = raytrace(heightmap, origin, dir, worldPos, normal, MAX_HEIGHT, currWsPoint);
+  float currHeight = raytrace(heightmap, origin, dir, worldPos, normal, 10.0, currWsPoint);
 
   vec3 prevWsPoint = vec3(currWsPoint);
   float prevHeight = currHeight;
@@ -147,7 +145,7 @@ bool raymarch(sampler2D heightmap, vec3 origin, vec3 dir, vec3 worldPos, vec3 no
 
     //Ray has marched below terrain, we have found the hitpoint
     if(currHeight > currWsPoint.z) {
-      refinedWorldPos = interpolateBetweenMarches(prevWsPoint, prevHeight, currWsPoint, currHeight, normal);
+      refinedWorldPos = interpolateBetweenMarches(prevWsPoint, prevHeight, currWsPoint, currHeight, normal, dir);
       found = true;
       break;
     }else{

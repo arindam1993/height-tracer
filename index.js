@@ -78,7 +78,7 @@ Promise.all([demPromise, rasterPromise]).then(([texture, rasterTexture]) => {
   const tile = martini.createTile(decodedDem);
 
   // get a mesh (vertices and triangles indices) for a 50m error
-  const martiniMesh = tile.getMesh(400);
+  const martiniMesh = tile.getMesh(200);
   const numVertices = martiniMesh.vertices.length / 2;
   const numTriangles = martiniMesh.triangles.length / 3;
   const vertices = new Float32Array(numVertices * 3);
