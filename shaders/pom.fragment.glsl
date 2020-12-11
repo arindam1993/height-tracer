@@ -2,8 +2,8 @@ precision highp float;
 #define STANDARD
 #define USE_UV
 #define USE_MAP
-#define MARCH_STEPS 30
-#define TERRAIN_SCALE vec2(513.0 * 1.24739482778494, 513.0 * 1.24739482778494)
+#define MARCH_STEPS 200
+#define TERRAIN_SCALE vec2(513.0 * 1.24739482778494/4.0, 513.0 * 1.24739482778494/4.0)
 
 #ifdef PHYSICAL
 	#define REFLECTIVITY
@@ -20,6 +20,7 @@ varying vec3 vWorldPosition;
 varying vec3 vPlaneWorldPosition;
 varying vec3 vPlaneNormal;
 uniform vec3 cPos;
+uniform vec3 meshOrigin;
 uniform float maxHeight;
 uniform float terrainScale;
 uniform float exaggeration;
@@ -73,7 +74,7 @@ varying vec3 vViewPosition;
 #include <clipping_planes_pars_fragment>
 
 vec3 rayPlaneIntersect(vec3 origin, vec3 dir, vec3 P, vec3 N, float height) {
-  vec3 p = P + height * N;
+  vec3 p = P + height * vec3(0,0,1);
   float l = dot(dir, N);
   float t = dot(p - origin, N)/l;
   
@@ -87,7 +88,7 @@ float sampleHeight(sampler2D heightmap, vec2 uv) {
 }
 
 vec2 wsToUv(vec3 wsPos) {
-  vec2 uv = wsPos.xy/TERRAIN_SCALE;
+  vec2 uv = (wsPos.xy - meshOrigin.xy)/TERRAIN_SCALE;
   uv.y = 1.0 - uv.y;
   return uv;
 }
@@ -142,7 +143,7 @@ bool raymarch(sampler2D heightmap, vec3 origin, vec3 dir, vec3 worldPos, vec3 no
   
   bool found = false;
   for( int i = 1; i < MARCH_STEPS; i++){
-    float heightOffset = -20.0 * float(i)/float(MARCH_STEPS);
+    float heightOffset = -10.0 * float(i)/float(MARCH_STEPS);
     currHeight = raytrace(heightmap, origin, dir, worldPos, normal, heightOffset, currWsPoint);
 
     //Ray has marched below terrain, we have found the hitpoint
@@ -156,7 +157,7 @@ bool raymarch(sampler2D heightmap, vec3 origin, vec3 dir, vec3 worldPos, vec3 no
     }
   }
   refinedWorldPos = currWsPoint;
-  return true;
+  return found;
 }
 
 
